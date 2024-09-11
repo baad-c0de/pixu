@@ -2,7 +2,7 @@ default:
     just --list
 
 dev:
-    bacon clippy
+    RUST_LOG=trace bacon clippy
 
 run *args:
     cargo run -- {{args}}

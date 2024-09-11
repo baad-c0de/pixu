@@ -1,6 +1,6 @@
 use std::{collections::HashMap, hash::Hash};
 
-use crate::{App, LayerType, Pixu, PixuResult};
+use crate::{App, LayerState, LayerType, Pixu, PixuResult};
 
 pub struct PixuBuilder<Layer> {
     pub(crate) title: String,
@@ -12,7 +12,7 @@ pub struct PixuBuilder<Layer> {
 
 impl<Layer> PixuBuilder<Layer>
 where
-    Layer: Eq + Hash,
+    Layer: Eq + Hash + Copy,
 {
     pub fn with_title(self, title: &str) -> Self {
         PixuBuilder {
@@ -36,12 +36,38 @@ where
     }
 
     fn build(self) -> Pixu<Layer> {
+        let layers = self
+            .layers
+            .iter()
+            .map(|(layer, layer_type)| {
+                let (width, height, scale) = match *layer_type {
+                    LayerType::ScaledLayer(scale) => {
+                        (self.width / scale, self.height / scale, scale)
+                    }
+                };
+
+                (
+                    *layer,
+                    LayerState {
+                        scale,
+                        width,
+                        height,
+                        pixels: vec![0; (width * height) as usize],
+                    },
+                )
+            })
+            .collect::<HashMap<Layer, LayerState>>();
+
         Pixu {
             title: self.title,
             width: self.width,
             height: self.height,
-            layers: self.layers,
+            layers,
             window: None,
+            render_state: Default::default(),
+            tick_state: Default::default(),
+            app: self.app,
+            exiting: false,
         }
     }
 
